@@ -13,6 +13,7 @@ dialog{border:0;padding:36px;width:min(520px,calc(100vw - 32px));max-height:calc
 
 
 
+.secondary{display:inline-flex;justify-content:center;align-items:center;min-height:46px;background:var(--paper);color:var(--ink);border:1px solid #a7b1a1;padding:11px 15px;font-size:12px;font-weight:600;white-space:nowrap}.secondary:hover{background:#e3e8da}
 /* The full campus has six reachable landmark stops. */
 .places{max-width:calc(100vw - 310px);overflow-x:auto;flex-shrink:1}.places button{flex-shrink:0;white-space:nowrap}.route-line{display:none}
 @media(max-width:700px){.places{max-width:100%;justify-content:flex-start;width:100%;flex-basis:100%;scrollbar-width:thin}.places button{font-size:11px;padding-inline:10px}}
