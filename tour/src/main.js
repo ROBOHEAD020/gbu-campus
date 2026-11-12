@@ -39,7 +39,8 @@ function syncUI(){
   const entered=mode!=='welcome';$('welcome').hidden=entered;
   for(const id of ['location-note','places','visit-controls','gesture-hint'])$(id).hidden=!entered;
   $('touch-controls').hidden=!entered||!(small()||matchMedia('(pointer:coarse)').matches);
-  const b=$('tour-toggle');b.textContent=paused?'Resume visit':mode==='tour'?'Pause visit':reduced?'Visit next landmark':'Guided visit';
+  $('back-to-guide').hidden=!entered||mode!=='walk'||paused;
+  const b=$('tour-toggle');b.hidden=entered&&mode==='walk'&&!paused;b.textContent=paused?'Resume visit':mode==='tour'?'Pause visit':reduced?'Visit next landmark':'Guided visit';
   b.setAttribute('aria-pressed',String(mode==='tour'&&!paused));
 }
 async function transitionTo(position,target){
@@ -83,6 +84,7 @@ if(import.meta.hot)import.meta.hot.dispose(()=>audio.dispose());
 
 $('start-tour').addEventListener('click',beginTour);$('start-walk').addEventListener('click',()=>visit('plaza'));
 $('tour-toggle').addEventListener('click',()=>{if(paused||mode==='tour')togglePause();else beginTour();});
+$('back-to-guide').addEventListener('click',()=>backToGuide());
 $('reset').addEventListener('click',()=>{visit('plaza');announce('Back at the arrival plaza.');});
 $('retry').addEventListener('click',()=>location.reload());
 document.querySelectorAll('[data-place]').forEach(b=>b.addEventListener('click',()=>visit(b.dataset.place)));
@@ -132,7 +134,7 @@ function walk(dt){
 }
 // Authored stop-to-stop route follows the same promenade and open entrances as walking.
 const route=[];
-for(const [x,z,look] of [[38,39,[-21,8,-9]],[38,26,[-21,8,-9]],[-20,28,[-25,8,-17]],[-20,20,[-25,8,-17]],[-20,28,[-77,6,0]],[-77,23,[-77,8,0]],[-77,6,[-77,4,-5]],[-77,23,[-120,22,-15]],[38,26,[70,9,0]],[92,26,[107,6,0]],[107,26,[107,6,0]],[107,11,[107,5,-1]],[107,26,[126,1,42]],[90,26,[104,18,-34]],[90,-12,[104,13,-34]]]){
+for(const [x,z,look] of [[38,39,[-21,8,-9]],[38,26,[-21,8,-9]],[-20,28,[-25,8,-17]],[-20,20,[-25,8,-17]],[-20,28,[-77,6,0]],[-77,23,[-77,8,0]],[-77,6,[-77,4,-5]],[-77,23,[-120,22,-15]],[-99,-6,[-122,23,-29]],[38,26,[70,9,0]],[92,26,[107,6,0]],[107,26,[107,6,0]],[107,11,[107,5,-1]],[107,26,[126,1,42]],[90,26,[104,18,-34]],[90,-12,[104,13,-34]]]){
  const prev=route.at(-1);route.push({x,z,look,t:prev?prev.t+Math.hypot(x-prev.x,z-prev.z)/5.5+2:0});
 }
 function guided(dt){
@@ -143,6 +145,16 @@ function guided(dt){
   if(tourTime>=route.at(-1).t&&!tourDone){tourDone=true;mode='walk';syncUI();announce('You have reached the dormitory arcade. Keep exploring or choose another landmark.',true);}
 }
 function updatePlace(){const p=camera.position;let nearest=activePlace,best=Infinity;for(const [id,s]of Object.entries(places)){const d=Math.hypot(p.x-s.position[0],p.z-s.position[2]);if(d<best){nearest=id;best=d;}}locationUI(nearest);}
+const guideStartByPlace={plaza:0,entrance:3,lobby:6,sports:12,residence:15,towers:8};
+async function backToGuide(){
+  if(!ready||mode==='welcome'||mode==='tour')return;
+  const current=camera.position;let nearest=activePlace,best=Infinity;
+  for(const [id,place] of Object.entries(places)){const distance=Math.hypot(current.x-place.position[0],current.z-place.position[2]);if(distance<best){nearest=id;best=distance;}}
+  const view=places[nearest];mode='walk';paused=false;tourDone=false;clearInput();locationUI(nearest);syncUI();
+  if(!await transitionTo(view.position,view.target))return;
+  if(reduced){syncUI();canvas.focus({preventScroll:true});announce('Camera motion is reduced. Choose a place to continue.');return;}
+  tourTime=route[guideStartByPlace[nearest]].t;mode='tour';syncUI();canvas.focus({preventScroll:true});announce(`Guided visit resumed at ${view.title}.`);
+}
 
 let frameCount=0,frameMs=[];
 function render(now){
